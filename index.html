@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Balanced Speed Car Racing</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #111;
       display: flex;
@@ -21,7 +17,6 @@
       position: relative;
     }
 
-    /* 1) Start Screen */
     #startScreen {
       position: absolute;
       top: 0; left: 0;
@@ -36,22 +31,10 @@
       padding: 20px;
       z-index: 20;
     }
-    #startScreen h1 {
-      font-size: 36px;
-      margin-bottom: 16px;
-    }
-    #startScreen p {
-      font-size: 20px;
-      margin-bottom: 8px;
-    }
-    #startScreen ul {
-      list-style: none;
-      margin-bottom: 24px;
-    }
-    #startScreen ul li {
-      margin: 6px 0;
-      font-size: 18px;
-    }
+    #startScreen h1 { font-size: 36px; margin-bottom: 16px; }
+    #startScreen p { font-size: 20px; margin-bottom: 8px; }
+    #startScreen ul { list-style: none; margin-bottom: 24px; }
+    #startScreen ul li { margin: 6px 0; font-size: 18px; }
     #startButton {
       padding: 12px 24px;
       font-size: 22px;
@@ -62,7 +45,6 @@
       cursor: pointer;
     }
 
-    /* 2) Game Container (hidden until start) */
     #gameContainer {
       display: none;
       position: relative;
@@ -76,7 +58,6 @@
       display: block;
     }
 
-    /* CSS-animated car overlay */
     #cssCar {
       position: absolute;
       bottom: 40px;
@@ -105,6 +86,7 @@
     }
     #cssCar .front-wheel { right: 5px; }
     #cssCar .back-wheel  { left: 5px; }
+
     @keyframes spin {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
@@ -126,6 +108,7 @@
       animation: fadeIn 0.8s ease-out;
       z-index: 10;
     }
+
     @keyframes fadeIn {
       from { opacity: 0; } to { opacity: 1; }
     }
@@ -140,7 +123,6 @@
       z-index: 10;
     }
 
-    /* On-screen steer buttons */
     .steer-button {
       position: absolute;
       bottom: 20px;
@@ -157,8 +139,13 @@
       user-select: none;
       z-index: 10;
     }
+
     #leftBtn  { left: 20px; }
     #rightBtn { right: 20px; }
+
+    @media (max-width: 450px) {
+      #gameContainer { transform: scale(0.9); }
+    }
   </style>
 </head>
 <body>
@@ -194,8 +181,10 @@
     <button id="rightBtn" class="steer-button">▶</button>
   </div>
 
+  <!-- Background music -->
+  <audio id="bgMusic" src="engine.mp3" loop preload="auto"></audio>
+
   <script>
-    // Elements
     const startScreen   = document.getElementById('startScreen');
     const startButton   = document.getElementById('startButton');
     const gameContainer = document.getElementById('gameContainer');
@@ -206,29 +195,22 @@
     const cssCar        = document.getElementById('cssCar');
     const leftBtn       = document.getElementById('leftBtn');
     const rightBtn      = document.getElementById('rightBtn');
+    const music         = document.getElementById('bgMusic');
 
-    // Game state
-    let lastTime   = 0;
-    let gameOver   = false;
-    let score      = 0;
+    let lastTime = 0;
+    let gameOver = false;
+    let score = 0;
     let laneOffset = 0;
-    const keys     = { ArrowLeft:false, ArrowRight:false };
+    const keys = { ArrowLeft: false, ArrowRight: false };
 
-    // Car
     const car = {
-      x: 180,
-      y: 500,
-      w: 40,
-      h: 60,
-      baseSpeed: 5,
-      wheelAngle: 0,
+      x: 180, y: 500, w: 40, h: 60,
+      baseSpeed: 5, wheelAngle: 0,
       touchX: null
     };
 
-    // Entities
     let obstacles = [], boosts = [], coins = [], particles = [];
 
-    // Input handlers
     document.addEventListener('keydown', e => {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight')
         keys[e.key] = true;
@@ -251,7 +233,6 @@
     canvas.addEventListener('touchstart', onTouch);
     canvas.addEventListener('touchmove',  onTouch);
     canvas.addEventListener('touchend',   () => car.touchX = null);
-
     function onTouch(e) {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
@@ -260,7 +241,6 @@
 
     restartBtn.addEventListener('click', resetGame);
 
-    // Spawners
     function spawnObstacle() {
       if (Math.random() < 0.02) {
         const w = 30 + Math.random()*30;
@@ -295,7 +275,6 @@
       }
     }
 
-    // Collision
     function rectsCollide(a, b) {
       return a.x < b.x + b.w && a.x + a.w > b.x &&
              a.y < b.y + b.h && a.y + a.h > b.y;
@@ -309,39 +288,32 @@
       return dx2*dx2 + dy2*dy2 <= c.r*c.r;
     }
 
-    // Update loop
     function update(dt) {
       const factor = dt/16;
+      if (keys.ArrowLeft && car.x > 0) car.x -= car.baseSpeed * factor;
+      if (keys.ArrowRight && car.x + car.w < canvas.width) car.x += car.baseSpeed * factor;
 
-      // Steering
-      if (keys.ArrowLeft  && car.x > 0)                      car.x -= car.baseSpeed * factor;
-      if (keys.ArrowRight && car.x + car.w < canvas.width)  car.x += car.baseSpeed * factor;
-
-      // Touch drag
       if (car.touchX !== null) {
-        const target  = car.touchX - car.w/2;
-        const diff    = target - car.x;
+        const target = car.touchX - car.w/2;
+        const diff = target - car.x;
         const maxMove = car.baseSpeed * factor;
         car.x += Math.abs(diff) > maxMove ? Math.sign(diff)*maxMove : diff;
       }
 
-      // CSS car position
       car.wheelAngle += 0.2 * factor;
       cssCar.style.left = `${car.x}px`;
-
-      // Road animation
       laneOffset += 4 * factor;
       if (laneOffset > 40) laneOffset = 0;
 
-      // Spawn entities
-      spawnObstacle();
-      spawnBoost();
-      spawnCoin();
+      spawnObstacle(); spawnBoost(); spawnCoin();
 
-      // Move & collide
       obstacles.forEach((o,i) => {
         o.y += o.speed * factor;
-        if (rectsCollide(car, o)) gameOver = true;
+        if (rectsCollide(car, o)) {
+          gameOver = true;
+          music.pause();
+          music.currentTime = 0;
+        }
         if (o.y > canvas.height) { obstacles.splice(i,1); score++; }
       });
       boosts.forEach((b,i) => {
@@ -363,14 +335,8 @@
         if (c.y > canvas.height) coins.splice(i,1);
       });
 
-      // Particles
       [8, car.w - 8].forEach(offset => {
-        particles.push({
-          x: car.x + offset,
-          y: car.y + car.h,
-          r: 2 + Math.random()*2,
-          life: 20
-        });
+        particles.push({ x: car.x + offset, y: car.y + car.h, r: 2 + Math.random()*2, life: 20 });
       });
       particles.forEach((p,i) => {
         p.y += 2 * factor;
@@ -378,69 +344,47 @@
       });
     }
 
-    // Draw loop
     function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
-
-      // Background
       const grad = ctx.createLinearGradient(0,0,0,canvas.height);
       grad.addColorStop(0,'#447');
       grad.addColorStop(1,'#223');
       ctx.fillStyle = grad;
       ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      // Road
       ctx.fillStyle = '#555';
       ctx.fillRect(50,0,canvas.width-100,canvas.height);
 
-      // Center dashes
       ctx.fillStyle = '#AAA';
-      const dashLen = 20, spacing = 20;
-      for (let y = -dashLen + laneOffset; y < canvas.height; y += dashLen + spacing) {
-        ctx.fillRect(canvas.width/2 - 2, y, 4, dashLen);
+      for (let y = -20 + laneOffset; y < canvas.height; y += 40) {
+        ctx.fillRect(canvas.width/2 - 2, y, 4, 20);
       }
 
-      // Entities
-      boosts.forEach(b => {
-        ctx.fillStyle = 'lime';
-        ctx.fillRect(b.x,b.y,b.w,b.h);
-      });
+      boosts.forEach(b => { ctx.fillStyle = 'lime'; ctx.fillRect(b.x,b.y,b.w,b.h); });
       coins.forEach(c => {
         ctx.fillStyle = 'gold';
-        ctx.beginPath();
-        ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(c.x,c.y,c.r,0,Math.PI*2); ctx.fill();
       });
-      obstacles.forEach(o => {
-        ctx.fillStyle = '#F44';
-        ctx.fillRect(o.x,o.y,o.w,o.h);
-      });
+      obstacles.forEach(o => { ctx.fillStyle = '#F44'; ctx.fillRect(o.x,o.y,o.w,o.h); });
       particles.forEach(p => {
         ctx.fillStyle = `rgba(200,200,200,${p.life/20})`;
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
       });
 
-      // Score
       ctx.fillStyle = '#FFF';
       ctx.font = '24px sans-serif';
       ctx.fillText(`Score: ${score}`, 10, 30);
 
-      // Game Over
       if (gameOver) {
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0,0,canvas.width,canvas.height);
         ctx.fillStyle = '#FFF';
         ctx.font = '40px sans-serif';
         ctx.fillText('Game Over', 90, 300);
-
         restartBtn.style.display = 'block';
-        devCredit.style.bottom  = '10px';
+        devCredit.style.bottom = '10px';
       }
     }
 
-    // Main loop
     function loop(ts=0) {
       const dt = ts - lastTime || 16;
       lastTime = ts;
@@ -449,25 +393,27 @@
       if (!gameOver) requestAnimationFrame(loop);
     }
 
-    // Reset & start
     function resetGame() {
-      gameOver   = false;
-      score      = 0;
-      obstacles  = [];
-      boosts     = [];
-      coins      = [];
-      particles  = [];
-      car.x      = 180;
+      gameOver = false;
+      score = 0;
+      obstacles = [];
+      boosts = [];
+      coins = [];
+      particles = [];
+      car.x = 180;
       car.baseSpeed = 5;
-      lastTime   = 0;
+      lastTime = 0;
       restartBtn.style.display = 'none';
-      devCredit.style.bottom    = '-50px';
+      devCredit.style.bottom = '-50px';
+
+      music.currentTime = 0;
+      music.play().catch(() => {});
       requestAnimationFrame(loop);
     }
 
-    // Wire up “Start Game”
     startButton.addEventListener('click', () => {
-      startScreen.style.display   = 'none';
+      music.volume = 0.5;
+      startScreen.style.display = 'none';
       gameContainer.style.display = 'block';
       resetGame();
     });
